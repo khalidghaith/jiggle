@@ -1,5 +1,6 @@
 import tkinter as tk
-from tkinter import font as tkfont, messagebox
+from tkinter import messagebox
+import customtkinter as ctk
 import time
 import threading
 import random
@@ -174,12 +175,12 @@ class JiggleEngine:
         self.app.programmatic_move = False
 
 # --- GUI Application ---
-class JiggleApp(tk.Tk):
+class JiggleApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         
         self.title("Jiggle")
-        self.geometry("440x320") 
+        self.geometry("440x540") 
         self.resizable(False, False)
         
         # --- Config File Setup ---
@@ -197,7 +198,6 @@ class JiggleApp(tk.Tk):
         self.monitoring_active = False  
         self.last_activity_time = time.time()
         self.programmatic_move = False  
-        self.settings_visible = False
         self.app_running = True 
         self.has_shown_tray_message = False 
         self.saved_settings = {} # Store last saved state
@@ -214,6 +214,7 @@ class JiggleApp(tk.Tk):
         self.var_start_minimized = tk.BooleanVar(value=True) 
         self.var_start_monitoring = tk.BooleanVar(value=False) 
         self.var_auto_update = tk.BooleanVar(value=True) 
+        self.var_dark_theme = tk.BooleanVar(value=True) # Theme switch
 
         # Add listeners for changes
         self.var_threshold.trace_add("write", self._on_setting_changed)
@@ -223,6 +224,7 @@ class JiggleApp(tk.Tk):
         self.var_start_minimized.trace_add("write", self._on_setting_changed)
         self.var_start_monitoring.trace_add("write", self._on_setting_changed) 
         self.var_auto_update.trace_add("write", self._on_setting_changed)
+        self.var_dark_theme.trace_add("write", self._on_setting_changed)
 
         # -- Load Settings from JSON --
         self._load_settings()
@@ -239,8 +241,6 @@ class JiggleApp(tk.Tk):
 
         # 2. Handle Auto-Monitoring (only if launched via startup AND setting is enabled)
         if is_startup_launch and self.var_start_monitoring.get():
-            # FIX: Use a robust way to start monitoring on startup
-            # Start monitoring must be called after Tkinter is fully initialized.
             self.after(500, self._toggle_monitoring) 
             
         self.protocol("WM_DELETE_WINDOW", self._minimize_to_tray)
@@ -253,143 +253,231 @@ class JiggleApp(tk.Tk):
         self.after(1000, self._trigger_auto_update_check)
 
     def _configure_styles(self):
-        self.PASTEL_BG = "#F3F7F8"    
-        self.PASTEL_ACCENT = "#A9D0E6" 
-        self.PASTEL_GREEN = "#A8E6CF"  
-        self.PASTEL_RED = "#FFADAD"
-        self.PASTEL_SETTINGS = "#E8ECEF"
-        self.PASTEL_DISABLED = "#E0E0E0"
-        self.TEXT_DARK = "#333333"     
-        self.TEXT_ERROR = "#D9534F"
-        self.TEXT_SUCCESS = "#5CB85C"
-        self.TEXT_DISABLED = "#888888"
-
-        self.custom_font = tkfont.Font(family="Helvetica", size=14, weight="bold") 
-        self.status_font = tkfont.Font(family="Helvetica", size=20, weight="bold") 
-        self.detail_font = tkfont.Font(family="Helvetica", size=10)
+        # Slate/Charcoal Minimal Palette (Sleek Flat colors, no gradients)
+        self.COLOR_BG = ("#F1F2F6", "#1A1D20")
+        self.COLOR_CARD = ("#FFFFFF", "#262A2E")
+        self.COLOR_BORDER = ("#E2E8F0", "#3E444D")
+        self.COLOR_TEXT_PRIMARY = ("#2D3748", "#F1F2F6")
+        self.COLOR_TEXT_MUTED = ("#718096", "#A4B0BE")
         
-        self.config(bg=self.PASTEL_BG) 
+        self.COLOR_GREEN = "#2ED573"
+        self.COLOR_GREEN_HOVER = "#26AF5F"
+        self.COLOR_RED = "#FF4757"
+        self.COLOR_RED_HOVER = "#E03E4D"
+        
+        self.COLOR_ACCENT = ("#1E90FF", "#3742FA")
+        self.COLOR_ACCENT_HOVER = ("#1C82EC", "#2F38D9")
+        self.COLOR_DISABLED = ("#E0E0E0", "#3E444D")
+        self.COLOR_TEXT_DISABLED = ("#888888", "#5A6577")
+
+        # Configure customtkinter appearance and theme
+        ctk.set_appearance_mode("dark" if self.var_dark_theme.get() else "light")
+        ctk.set_default_color_theme("blue") 
 
     def _create_widgets(self):
-        self.main_frame = tk.Frame(self, bg=self.PASTEL_BG, padx=40, pady=20)
-        self.main_frame.pack(side="top", fill="both", expand=True)
+        # Main container filling the whole window
+        self.main_frame = ctk.CTkFrame(self, fg_color=self.COLOR_BG, corner_radius=0)
+        self.main_frame.pack(fill="both", expand=True)
 
-        self.status_label = tk.Label(
+        # 1. Top Card: Status & Countdown Dashboard
+        self.status_card = ctk.CTkFrame(
             self.main_frame,
+            fg_color=self.COLOR_CARD,
+            corner_radius=12,
+            border_width=1,
+            border_color=self.COLOR_BORDER
+        )
+        self.status_card.pack(pady=(15, 10), fill="x", padx=20, ipady=12)
+
+        # Status row: Indicator Light + Status Text
+        status_row = ctk.CTkFrame(self.status_card, fg_color="transparent")
+        status_row.pack(pady=(10, 2))
+
+        # Status Dot
+        self.status_dot = ctk.CTkFrame(
+            status_row,
+            width=14,
+            height=14,
+            corner_radius=7,
+            fg_color="#747D8C" # Start with stopped gray
+        )
+        self.status_dot.pack(side="left", padx=(0, 8))
+        self.status_dot.pack_propagate(False) # Prevent size shrinking
+
+        self.status_label = ctk.CTkLabel(
+            status_row,
             text="STOPPED",
-            font=self.status_font,
-            fg="#9E9E9E",
-            bg=self.PASTEL_BG
+            font=ctk.CTkFont(family="Segoe UI", size=18, weight="bold"),
+            text_color=self.COLOR_TEXT_MUTED
         )
-        self.status_label.pack(pady=(10, 5))
-        
-        self.detail_label = tk.Label(
-            self.main_frame,
-            text="Ready to monitor.",
-            font=self.detail_font,
-            fg=self.TEXT_DARK,
-            bg=self.PASTEL_BG
-        )
-        self.detail_label.pack(pady=(0, 20))
+        self.status_label.pack(side="left")
 
-        self.toggle_button = tk.Button(
+        # Detail text
+        self.detail_label = ctk.CTkLabel(
+            self.status_card,
+            text="Ready to monitor.",
+            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text_color=self.COLOR_TEXT_MUTED
+        )
+        self.detail_label.pack(pady=(2, 6))
+
+        # 2. Prominent Main Action Button
+        self.toggle_button = ctk.CTkButton(
             self.main_frame,
             text="START MONITORING",
             command=self._toggle_monitoring,
-            width=25,
-            height=2,
-            bd=0,
-            relief=tk.FLAT,
-            bg=self.PASTEL_GREEN,
-            fg=self.TEXT_DARK,
-            font=self.custom_font,
-            activebackground="#8ED8B7",
-            cursor="hand2",
-            padx=10,
-            pady=10
-        )
-        self.toggle_button.pack(pady=10)
-        
-        self.settings_btn = tk.Button(
-            self.main_frame, 
-            text="▼ Settings", 
-            command=self._toggle_settings_panel,
-            font=self.detail_font,
-            bd=0,
-            relief=tk.FLAT,
-            bg=self.PASTEL_BG,
-            fg="#555555",
-            activebackground=self.PASTEL_BG,
+            font=ctk.CTkFont(family="Segoe UI", size=14, weight="bold"),
+            height=46,
+            corner_radius=10,
+            fg_color=self.COLOR_GREEN,
+            hover_color=self.COLOR_GREEN_HOVER,
+            text_color="#1A1D20",
             cursor="hand2"
         )
-        self.settings_btn.pack(pady=(20, 0), anchor="s")
+        self.toggle_button.pack(fill="x", padx=20, pady=(5, 15))
 
-        self.settings_frame = tk.Frame(self.main_frame, bg=self.PASTEL_SETTINGS, padx=15, pady=15, relief=tk.RIDGE, bd=0)
-        
-        # Idle Timeout
-        tk.Label(self.settings_frame, text="Idle Timeout (seconds):", bg=self.PASTEL_SETTINGS, font=self.detail_font).pack(anchor='w')
-        tk.Entry(self.settings_frame, textvariable=self.var_threshold, width=10, bd=1, relief=tk.SUNKEN, font=self.detail_font).pack(anchor='w', pady=(2, 10))
+        # 3. Bottom Card: Settings panel (Always visible in fixed size)
+        self.settings_card = ctk.CTkFrame(
+            self.main_frame,
+            fg_color=self.COLOR_CARD,
+            corner_radius=12,
+            border_width=1,
+            border_color=self.COLOR_BORDER
+        )
+        self.settings_card.pack(fill="both", expand=True, padx=20, pady=(0, 20), ipady=10)
 
-        # Simulation Toggles
-        toggles_frame = tk.Frame(self.settings_frame, bg=self.PASTEL_SETTINGS)
-        toggles_frame.pack(fill='x', pady=(5, 5))
-        
-        tk.Label(toggles_frame, text="Simulation Actions:", bg=self.PASTEL_SETTINGS, font=("Helvetica", 10, "bold"), fg="#555").pack(anchor='w', pady=(0, 5))
+        # Settings Card Title + Theme Switcher Row
+        header_row = ctk.CTkFrame(self.settings_card, fg_color="transparent")
+        header_row.pack(fill="x", padx=15, pady=(12, 10))
+
+        ctk.CTkLabel(
+            header_row,
+            text="SETTINGS",
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            text_color=self.COLOR_TEXT_MUTED
+        ).pack(side="left")
+
+        self.theme_switch = ctk.CTkSwitch(
+            header_row,
+            text="Dark Theme",
+            variable=self.var_dark_theme,
+            command=self._toggle_theme,
+            font=ctk.CTkFont(family="Segoe UI", size=11),
+            progress_color=self.COLOR_GREEN,
+            cursor="hand2"
+        )
+        self.theme_switch.pack(side="right")
+
+        # Separator line
+        sep = ctk.CTkFrame(self.settings_card, height=1, fg_color=self.COLOR_BORDER)
+        sep.pack(fill="x", padx=15, pady=(0, 10))
+
+        # Idle Timeout Setting Row
+        timeout_row = ctk.CTkFrame(self.settings_card, fg_color="transparent")
+        timeout_row.pack(fill="x", padx=15, pady=4)
+
+        ctk.CTkLabel(
+            timeout_row,
+            text="Idle Timeout (seconds):",
+            font=ctk.CTkFont(family="Segoe UI", size=12),
+            text_color=self.COLOR_TEXT_PRIMARY
+        ).pack(side="left")
+
+        self.timeout_entry = ctk.CTkEntry(
+            timeout_row,
+            textvariable=self.var_threshold,
+            width=65,
+            height=26,
+            font=ctk.CTkFont(family="Segoe UI", size=12),
+            corner_radius=6,
+            border_width=1,
+            border_color=self.COLOR_BORDER,
+            fg_color=self.COLOR_BG
+        )
+        self.timeout_entry.pack(side="right")
+
+        # Two-column Toggles Frame
+        toggles_frame = ctk.CTkFrame(self.settings_card, fg_color="transparent")
+        toggles_frame.pack(fill="both", expand=True, padx=15, pady=8)
+
+        # Left Column: Simulation Actions
+        col_left = ctk.CTkFrame(toggles_frame, fg_color="transparent")
+        col_left.pack(side="left", fill="both", expand=True, padx=(0, 8))
+
+        ctk.CTkLabel(
+            col_left,
+            text="SIMULATION ACTIONS",
+            font=ctk.CTkFont(family="Segoe UI", size=10, weight="bold"),
+            text_color=self.COLOR_TEXT_MUTED
+        ).pack(anchor="w", pady=(0, 4))
 
         cb_style = {
-            "bg": self.PASTEL_SETTINGS, 
-            "activebackground": self.PASTEL_SETTINGS, 
-            "font": self.detail_font, 
-            "fg": self.TEXT_DARK, 
-            "selectcolor": "white",
-            "bd": 0
+            "font": ctk.CTkFont(family="Segoe UI", size=11),
+            "progress_color": self.COLOR_GREEN,
+            "cursor": "hand2"
         }
 
-        tk.Checkbutton(toggles_frame, text="Mouse Movement", variable=self.var_enable_move, **cb_style).pack(anchor='w')
-        tk.Checkbutton(toggles_frame, text="Page Scroll", variable=self.var_enable_scroll, **cb_style).pack(anchor='w')
-        tk.Checkbutton(toggles_frame, text="Key Press (Shift)", variable=self.var_enable_key, **cb_style).pack(anchor='w')
+        ctk.CTkSwitch(col_left, text="Mouse Movement", variable=self.var_enable_move, **cb_style).pack(anchor="w", pady=3)
+        ctk.CTkSwitch(col_left, text="Page Scroll", variable=self.var_enable_scroll, **cb_style).pack(anchor="w", pady=3)
+        ctk.CTkSwitch(col_left, text="Key Press (Shift)", variable=self.var_enable_key, **cb_style).pack(anchor="w", pady=3)
 
-        # Startup & Updates
-        tk.Label(toggles_frame, text="Startup & Updates:", bg=self.PASTEL_SETTINGS, font=("Helvetica", 10, "bold"), fg="#555").pack(anchor='w', pady=(10, 5))
+        # Right Column: System Preferences
+        col_right = ctk.CTkFrame(toggles_frame, fg_color="transparent")
+        col_right.pack(side="right", fill="both", expand=True, padx=(8, 0))
 
-        tk.Checkbutton(toggles_frame, text="Start Minimized to Tray", variable=self.var_start_minimized, **cb_style).pack(anchor='w')
-        tk.Checkbutton(toggles_frame, text="Start Monitoring on Startup", variable=self.var_start_monitoring, **cb_style).pack(anchor='w')
-        tk.Checkbutton(toggles_frame, text="Automatically Check and Install Updates", variable=self.var_auto_update, **cb_style).pack(anchor='w')
+        ctk.CTkLabel(
+            col_right,
+            text="SYSTEM PREFERENCES",
+            font=ctk.CTkFont(family="Segoe UI", size=10, weight="bold"),
+            text_color=self.COLOR_TEXT_MUTED
+        ).pack(anchor="w", pady=(0, 4))
 
-        self.update_btn = tk.Button(
-            self.settings_frame,
+        ctk.CTkSwitch(col_right, text="Start Minimized", variable=self.var_start_minimized, **cb_style).pack(anchor="w", pady=3)
+        ctk.CTkSwitch(col_right, text="Start on Boot", variable=self.var_start_monitoring, **cb_style).pack(anchor="w", pady=3)
+        ctk.CTkSwitch(col_right, text="Auto Updates", variable=self.var_auto_update, **cb_style).pack(anchor="w", pady=3)
+
+        # Action Buttons Row (Check for Updates & Apply Changes)
+        btn_row = ctk.CTkFrame(self.settings_card, fg_color="transparent")
+        btn_row.pack(fill="x", padx=15, pady=(8, 0))
+
+        self.update_btn = ctk.CTkButton(
+            btn_row,
             text="Check for Updates",
             command=self._manual_check_updates,
-            bg=self.PASTEL_BG,
-            fg=self.TEXT_DARK,
-            bd=0,
-            relief=tk.FLAT,
-            font=("Helvetica", 10, "bold"),
-            padx=10,
-            pady=5,
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            height=32,
+            fg_color="transparent",
+            border_width=1,
+            border_color=self.COLOR_BORDER,
+            hover_color=self.COLOR_DISABLED,
+            text_color=self.COLOR_TEXT_PRIMARY,
             cursor="hand2"
         )
-        self.update_btn.pack(fill='x', pady=(10, 5))
-
-        self.feedback_label = tk.Label(self.settings_frame, text="", bg=self.PASTEL_SETTINGS, font=("Helvetica", 9), fg=self.TEXT_DARK)
-        self.feedback_label.pack(pady=(5, 5))
+        self.update_btn.pack(side="left", fill="x", expand=True, padx=(0, 6))
 
         # Apply Button - Initial state is disabled (greyed out)
-        self.apply_btn = tk.Button(
-            self.settings_frame,
+        self.apply_btn = ctk.CTkButton(
+            btn_row,
             text="Apply Changes",
             command=self._apply_settings_inline,
-            bg=self.PASTEL_DISABLED,
-            fg=self.TEXT_DISABLED,
+            font=ctk.CTkFont(family="Segoe UI", size=11, weight="bold"),
+            height=32,
+            fg_color=self.COLOR_DISABLED,
+            hover_color=self.COLOR_DISABLED,
+            text_color=self.COLOR_TEXT_DISABLED,
             state="disabled",
-            bd=0,
-            relief=tk.FLAT,
-            font=("Helvetica", 10, "bold"),
-            padx=10,
-            pady=5,
             cursor="arrow"
         )
-        self.apply_btn.pack(fill='x')
+        self.apply_btn.pack(side="right", fill="x", expand=True, padx=(6, 0))
+
+        # Feedback Label for status messages
+        self.feedback_label = ctk.CTkLabel(
+            self.settings_card,
+            text="",
+            font=ctk.CTkFont(family="Segoe UI", size=10),
+            text_color=self.COLOR_TEXT_MUTED
+        )
+        self.feedback_label.pack(pady=(4, 0))
 
     # --- Config / Persistence Logic ---
     def _load_settings(self):
@@ -404,6 +492,7 @@ class JiggleApp(tk.Tk):
                     self.var_start_minimized.set(data.get("start_minimized", True))
                     self.var_start_monitoring.set(data.get("start_monitoring", False))
                     self.var_auto_update.set(data.get("auto_update", True))
+                    self.var_dark_theme.set(data.get("dark_theme", True))
                     
                     self.engine.set_capabilities(
                         data.get("move", True),
@@ -429,13 +518,14 @@ class JiggleApp(tk.Tk):
             "key": self.var_enable_key.get(),
             "start_minimized": self.var_start_minimized.get(),
             "start_monitoring": self.var_start_monitoring.get(),
-            "auto_update": self.var_auto_update.get()
+            "auto_update": self.var_auto_update.get(),
+            "dark_theme": self.var_dark_theme.get()
         }
         # Reset button state
         if hasattr(self, 'apply_btn'):
-            self.apply_btn.config(
-                bg=self.PASTEL_DISABLED, 
-                fg=self.TEXT_DISABLED, 
+            self.apply_btn.configure(
+                fg_color=self.COLOR_DISABLED, 
+                text_color=self.COLOR_TEXT_DISABLED, 
                 state="disabled",
                 cursor="arrow"
             )
@@ -451,22 +541,23 @@ class JiggleApp(tk.Tk):
             "key": self.var_enable_key.get(),
             "start_minimized": self.var_start_minimized.get(),
             "start_monitoring": self.var_start_monitoring.get(),
-            "auto_update": self.var_auto_update.get()
+            "auto_update": self.var_auto_update.get(),
+            "dark_theme": self.var_dark_theme.get()
         }
         
         if current_state != self.saved_settings:
             # Highlight button
-            self.apply_btn.config(
-                bg=self.PASTEL_ACCENT, 
-                fg="white", 
+            self.apply_btn.configure(
+                fg_color=self.COLOR_ACCENT, 
+                text_color="#FFFFFF", 
                 state="normal",
                 cursor="hand2"
             )
         else:
             # Dim button
-            self.apply_btn.config(
-                bg=self.PASTEL_DISABLED, 
-                fg=self.TEXT_DISABLED, 
+            self.apply_btn.configure(
+                fg_color=self.COLOR_DISABLED, 
+                text_color=self.COLOR_TEXT_DISABLED, 
                 state="disabled",
                 cursor="arrow"
             )
@@ -479,7 +570,8 @@ class JiggleApp(tk.Tk):
             "key": self.var_enable_key.get(),
             "start_minimized": self.var_start_minimized.get(),
             "start_monitoring": self.var_start_monitoring.get(),
-            "auto_update": self.var_auto_update.get()
+            "auto_update": self.var_auto_update.get(),
+            "dark_theme": self.var_dark_theme.get()
         }
         try:
             with open(self.config_file, 'w') as f:
@@ -547,14 +639,16 @@ class JiggleApp(tk.Tk):
         is_jiggling = self.engine._jiggle_active
 
         if is_jiggling:
-            self.status_label.config(text="SIMULATION ACTIVE", fg=self.PASTEL_RED)
-            self.detail_label.config(text="Simulating work...")
+            self.status_label.configure(text="SIMULATION ACTIVE", text_color=self.COLOR_RED)
+            self.status_dot.configure(fg_color=self.COLOR_RED)
+            self.detail_label.configure(text="Simulating human-like inputs...")
         else:
             if elapsed > self.idle_threshold:
                 self.engine.start_jiggling()
             else:
-                self.status_label.config(text="MONITORING", fg=self.PASTEL_GREEN)
-                self.detail_label.config(text=f"Waiting for inactivity... {int(remaining)}s")
+                self.status_label.configure(text="MONITORING", text_color=self.COLOR_GREEN)
+                self.status_dot.configure(fg_color=self.COLOR_GREEN)
+                self.detail_label.configure(text=f"Waiting for inactivity... {int(remaining)}s remaining")
 
         self.after(500, self._monitor_loop)
 
@@ -598,41 +692,43 @@ class JiggleApp(tk.Tk):
             self.engine.stop_jiggling()
             self._stop_listeners()
             
-            self.toggle_button.config(text="START MONITORING", bg=self.PASTEL_GREEN, fg=self.TEXT_DARK)
-            self.status_label.config(text="STOPPED", fg="#9E9E9E")
-            self.detail_label.config(text="Monitoring paused.")
+            self.toggle_button.configure(
+                text="START MONITORING", 
+                fg_color=self.COLOR_GREEN, 
+                hover_color=self.COLOR_GREEN_HOVER, 
+                text_color="#1A1D20"
+            )
+            self.status_label.configure(text="STOPPED", text_color=self.COLOR_TEXT_MUTED)
+            self.status_dot.configure(fg_color="#747D8C") # Neutral gray
+            self.detail_label.configure(text="Monitoring paused.")
         else:
             self.monitoring_active = True
             self.last_activity_time = time.time() 
             self._start_listeners()
             self._monitor_loop() 
             
-            self.toggle_button.config(text="STOP MONITORING", bg=self.PASTEL_RED, fg="white")
+            self.toggle_button.configure(
+                text="STOP MONITORING", 
+                fg_color=self.COLOR_RED, 
+                hover_color=self.COLOR_RED_HOVER, 
+                text_color="#FFFFFF"
+            )
 
-    # --- Settings Logic ---
-    def _toggle_settings_panel(self):
-        if self.settings_visible:
-            self.settings_frame.pack_forget()
-            self.settings_btn.config(text="▼ Settings")
-            self.geometry("440x320") 
-            self.settings_visible = False
-            self.feedback_label.config(text="") 
-        else:
-            self.settings_frame.pack(fill='x', pady=10)
-            self.settings_btn.config(text="▲ Hide Settings")
-            self.geometry("440x685") 
-            self.settings_visible = True
+    # --- Theme Control ---
+    def _toggle_theme(self):
+        """Toggle appearance mode between Dark and Light."""
+        ctk.set_appearance_mode("dark" if self.var_dark_theme.get() else "light")
 
     def _apply_settings_inline(self):
         try:
             new_thresh = self.var_threshold.get()
             # Enforce minimum idle time of 5 seconds
             if new_thresh < 5:
-                self.feedback_label.config(text="Error: Minimum timeout is 5 seconds.", fg=self.TEXT_ERROR)
+                self.feedback_label.configure(text="Error: Minimum timeout is 5 seconds.", text_color=self.COLOR_RED)
                 return
             self.idle_threshold = new_thresh
         except:
-            self.feedback_label.config(text="Error: Invalid Timeout", fg=self.TEXT_ERROR)
+            self.feedback_label.configure(text="Error: Invalid Timeout", text_color=self.COLOR_RED)
             return
         
         self.engine.set_capabilities(
@@ -643,8 +739,8 @@ class JiggleApp(tk.Tk):
 
         self._save_settings()
 
-        self.feedback_label.config(text="Settings Saved ✓", fg=self.TEXT_SUCCESS)
-        self.after(2000, lambda: self.feedback_label.config(text=""))
+        self.feedback_label.configure(text="Settings Saved ✓", text_color=self.COLOR_GREEN)
+        self.after(2000, lambda: self.feedback_label.configure(text=""))
 
     # --- Auto-Update System Logic ---
     def _trigger_auto_update_check(self):
@@ -652,7 +748,7 @@ class JiggleApp(tk.Tk):
             threading.Thread(target=self._check_updates_background, args=(True,), daemon=True).start()
 
     def _manual_check_updates(self):
-        self.update_btn.config(state="disabled", text="Checking...")
+        self.update_btn.configure(state="disabled", text="Checking...")
         threading.Thread(target=self._check_updates_background, args=(False,), daemon=True).start()
 
     def _check_updates_background(self, silent=True):
@@ -681,13 +777,13 @@ class JiggleApp(tk.Tk):
                         if not silent:
                             self.after(0, lambda: messagebox.showinfo("Check Updates", f"A new version {latest_tag} is available, but no Jiggle.exe asset was found in the release."))
                 else:
-                    if not silent:
-                        self.after(0, lambda: messagebox.showinfo("Check Updates", "You are running the latest version of Jiggle."))
+                     if not silent:
+                         self.after(0, lambda: messagebox.showinfo("Check Updates", "You are running the latest version of Jiggle."))
         except Exception as e:
             if not silent:
                 self.after(0, lambda: messagebox.showerror("Check Updates", f"Failed to check for updates:\n{e}"))
         finally:
-            self.after(0, lambda: self.update_btn.config(state="normal", text="Check for Updates"))
+            self.after(0, lambda: self.update_btn.configure(state="normal", text="Check for Updates"))
 
     def _is_newer_version(self, latest, current):
         try:
@@ -705,7 +801,7 @@ class JiggleApp(tk.Tk):
             f"A new version of Jiggle ({latest_tag}) is available!\n\nWould you like to download and install it now?\nThe application will restart automatically."
         )
         if ans:
-            self.update_btn.config(state="disabled", text="Updating...")
+            self.update_btn.configure(state="disabled", text="Updating...")
             threading.Thread(target=self._download_and_install_update, args=(exe_url,), daemon=True).start()
 
     def _download_and_install_update(self, exe_url):
@@ -765,7 +861,7 @@ exit
         except Exception as e:
             self.after(0, lambda: messagebox.showerror("Update Error", f"Failed to install update:\n{e}"))
         finally:
-            self.after(0, lambda: self.update_btn.config(state="normal", text="Check for Updates"))
+            self.after(0, lambda: self.update_btn.configure(state="normal", text="Check for Updates"))
 
 # --- SINGLE INSTANCE LOGIC (SOCKET BASED) ---
 SINGLE_INSTANCE_PORT = 65432 # Port to listen on

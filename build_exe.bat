@@ -1,6 +1,6 @@
 @echo off
-echo Installing required libraries if missing (pystray, Pillow, pynput)...
-pip install pyinstaller pystray Pillow pynput
+echo Installing required libraries if missing (pystray, Pillow, pynput, customtkinter)...
+pip install pyinstaller pystray Pillow pynput customtkinter
 
 echo.
 echo Building Jiggle with system tray support...
@@ -14,6 +14,7 @@ REM --collect-all: Explicitly collects hidden dependencies for pystray and its f
 
 pyinstaller --noconsole --onefile --icon=icon.ico ^
 --add-data "icon.ico;." ^
+--collect-all "customtkinter" ^
 --collect-all "pystray" ^
 --collect-all "Pillow" ^
 --collect-all "pynput" ^

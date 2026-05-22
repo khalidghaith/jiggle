@@ -1,6 +1,6 @@
 # Jiggle
 
-Jiggle is a lightweight, premium desktop utility built with Python (Tkinter) that monitors system inactivity and simulates human-like inputs (mouse movements, page scrolling, and keypresses) to keep your system active and prevent it from falling asleep or showing as idle.
+Jiggle is a lightweight, premium desktop utility built with Python (CustomTkinter) that monitors system inactivity and simulates human-like inputs (mouse movements, page scrolling, and keypresses) to keep your system active and prevent it from falling asleep or showing as idle.
 
 ---
 
@@ -12,7 +12,7 @@ Jiggle is a lightweight, premium desktop utility built with Python (Tkinter) tha
   - **Page Scroll**: Simulates natural page scrolling (up and down).
   - **Key Press**: Triggers standard keypresses (e.g., `Shift`) safely.
 - **Dynamic Inactivity Threshold**: Customize the idle duration before the jiggler triggers.
-- **Interactive GUI**: A modern pastel-themed user interface with collapsible/expandable settings.
+- **Interactive GUI**: A modern, flat-styled interface using CustomTkinter with integrated settings and theme toggle (Dark/Light mode).
 - **System Tray Integration**:
   - Minimize to the Windows System Tray to run silently in the background.
   - Interactive right-click menu with options to show the window or exit.
@@ -25,7 +25,7 @@ Jiggle is a lightweight, premium desktop utility built with Python (Tkinter) tha
 ## 🛠️ Tech Stack & Dependencies
 
 - **Core**: Python 3.x
-- **GUI Framework**: Tkinter
+- **GUI Framework**: CustomTkinter (`customtkinter`)
 - **System Automation**:
   - `pynput` (for monitoring and simulating inputs)
 - **System Tray & Image Drawing**:
@@ -44,7 +44,7 @@ Jiggle is a lightweight, premium desktop utility built with Python (Tkinter) tha
 
 2. Install the required dependencies:
    ```bash
-   pip install pynput pystray Pillow
+   pip install pynput pystray Pillow customtkinter
    ```
 
 3. Launch the application:
