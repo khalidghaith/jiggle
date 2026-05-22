@@ -1,4 +1,4 @@
-# Jiggle (1.0.0)
+# Jiggle
 
 Jiggle is a lightweight, premium desktop utility built with Python (Tkinter) that monitors system inactivity and simulates human-like inputs (mouse movements, page scrolling, and keypresses) to keep your system active and prevent it from falling asleep or showing as idle.
 

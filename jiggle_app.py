@@ -172,7 +172,7 @@ class JiggleApp(tk.Tk):
     def __init__(self):
         super().__init__()
         
-        self.title("Jiggle 1.0.0")
+        self.title("Jiggle")
         self.geometry("440x320") 
         self.resizable(False, False)
         
@@ -474,7 +474,7 @@ class JiggleApp(tk.Tk):
             pystray.MenuItem("Exit", self._quit_application)
         )
 
-        self.tray_icon = pystray.Icon("Jiggle", image, "Jiggle 1.0.0", menu)
+        self.tray_icon = pystray.Icon("Jiggle", image, "Jiggle", menu)
         self.tray_icon.run()
 
     def _minimize_to_tray(self):
