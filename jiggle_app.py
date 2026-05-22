@@ -11,9 +11,15 @@ from pynput import mouse, keyboard
 from pynput.mouse import Controller as MouseController
 from pynput.keyboard import Key, Controller as KeyboardController
 
-# --- New Imports for System Tray ---
 import pystray
 from PIL import Image, ImageDraw
+import urllib.request
+import urllib.error
+import subprocess
+
+# --- Application Constants & Updater Configuration ---
+APP_VERSION = "1.0.0"
+GITHUB_RELEASES_URL = "https://api.github.com/repos/khalidghaith/jiggle/releases/latest"
 
 def resource_path(relative_path):
     """ Get absolute path to resource (for read-only assets like icons) """
@@ -207,6 +213,7 @@ class JiggleApp(tk.Tk):
         self.var_enable_key = tk.BooleanVar(value=True)
         self.var_start_minimized = tk.BooleanVar(value=True) 
         self.var_start_monitoring = tk.BooleanVar(value=False) 
+        self.var_auto_update = tk.BooleanVar(value=True) 
 
         # Add listeners for changes
         self.var_threshold.trace_add("write", self._on_setting_changed)
@@ -215,6 +222,7 @@ class JiggleApp(tk.Tk):
         self.var_enable_key.trace_add("write", self._on_setting_changed)
         self.var_start_minimized.trace_add("write", self._on_setting_changed)
         self.var_start_monitoring.trace_add("write", self._on_setting_changed) 
+        self.var_auto_update.trace_add("write", self._on_setting_changed)
 
         # -- Load Settings from JSON --
         self._load_settings()
@@ -240,6 +248,9 @@ class JiggleApp(tk.Tk):
         # Start the system tray thread
         self.tray_thread = threading.Thread(target=self._start_tray_icon, daemon=True)
         self.tray_thread.start()
+
+        # 3. Check for updates automatically on startup
+        self.after(1000, self._trigger_auto_update_check)
 
     def _configure_styles(self):
         self.PASTEL_BG = "#F3F7F8"    
@@ -338,12 +349,27 @@ class JiggleApp(tk.Tk):
         tk.Checkbutton(toggles_frame, text="Page Scroll", variable=self.var_enable_scroll, **cb_style).pack(anchor='w')
         tk.Checkbutton(toggles_frame, text="Key Press (Shift)", variable=self.var_enable_key, **cb_style).pack(anchor='w')
 
-        # Startup Options
-        tk.Label(toggles_frame, text="Startup Options:", bg=self.PASTEL_SETTINGS, font=("Helvetica", 10, "bold"), fg="#555").pack(anchor='w', pady=(10, 5))
+        # Startup & Updates
+        tk.Label(toggles_frame, text="Startup & Updates:", bg=self.PASTEL_SETTINGS, font=("Helvetica", 10, "bold"), fg="#555").pack(anchor='w', pady=(10, 5))
 
         tk.Checkbutton(toggles_frame, text="Start Minimized to Tray", variable=self.var_start_minimized, **cb_style).pack(anchor='w')
         tk.Checkbutton(toggles_frame, text="Start Monitoring on Startup", variable=self.var_start_monitoring, **cb_style).pack(anchor='w')
+        tk.Checkbutton(toggles_frame, text="Automatically Check and Install Updates", variable=self.var_auto_update, **cb_style).pack(anchor='w')
 
+        self.update_btn = tk.Button(
+            self.settings_frame,
+            text="Check for Updates",
+            command=self._manual_check_updates,
+            bg=self.PASTEL_BG,
+            fg=self.TEXT_DARK,
+            bd=0,
+            relief=tk.FLAT,
+            font=("Helvetica", 10, "bold"),
+            padx=10,
+            pady=5,
+            cursor="hand2"
+        )
+        self.update_btn.pack(fill='x', pady=(10, 5))
 
         self.feedback_label = tk.Label(self.settings_frame, text="", bg=self.PASTEL_SETTINGS, font=("Helvetica", 9), fg=self.TEXT_DARK)
         self.feedback_label.pack(pady=(5, 5))
@@ -377,6 +403,7 @@ class JiggleApp(tk.Tk):
                     self.var_enable_key.set(data.get("key", True))
                     self.var_start_minimized.set(data.get("start_minimized", True))
                     self.var_start_monitoring.set(data.get("start_monitoring", False))
+                    self.var_auto_update.set(data.get("auto_update", True))
                     
                     self.engine.set_capabilities(
                         data.get("move", True),
@@ -401,7 +428,8 @@ class JiggleApp(tk.Tk):
             "scroll": self.var_enable_scroll.get(),
             "key": self.var_enable_key.get(),
             "start_minimized": self.var_start_minimized.get(),
-            "start_monitoring": self.var_start_monitoring.get() 
+            "start_monitoring": self.var_start_monitoring.get(),
+            "auto_update": self.var_auto_update.get()
         }
         # Reset button state
         if hasattr(self, 'apply_btn'):
@@ -422,7 +450,8 @@ class JiggleApp(tk.Tk):
             "scroll": self.var_enable_scroll.get(),
             "key": self.var_enable_key.get(),
             "start_minimized": self.var_start_minimized.get(),
-            "start_monitoring": self.var_start_monitoring.get() 
+            "start_monitoring": self.var_start_monitoring.get(),
+            "auto_update": self.var_auto_update.get()
         }
         
         if current_state != self.saved_settings:
@@ -449,7 +478,8 @@ class JiggleApp(tk.Tk):
             "scroll": self.var_enable_scroll.get(),
             "key": self.var_enable_key.get(),
             "start_minimized": self.var_start_minimized.get(),
-            "start_monitoring": self.var_start_monitoring.get() 
+            "start_monitoring": self.var_start_monitoring.get(),
+            "auto_update": self.var_auto_update.get()
         }
         try:
             with open(self.config_file, 'w') as f:
@@ -590,7 +620,7 @@ class JiggleApp(tk.Tk):
         else:
             self.settings_frame.pack(fill='x', pady=10)
             self.settings_btn.config(text="▲ Hide Settings")
-            self.geometry("440x630") 
+            self.geometry("440x685") 
             self.settings_visible = True
 
     def _apply_settings_inline(self):
@@ -615,6 +645,127 @@ class JiggleApp(tk.Tk):
 
         self.feedback_label.config(text="Settings Saved ✓", fg=self.TEXT_SUCCESS)
         self.after(2000, lambda: self.feedback_label.config(text=""))
+
+    # --- Auto-Update System Logic ---
+    def _trigger_auto_update_check(self):
+        if self.var_auto_update.get():
+            threading.Thread(target=self._check_updates_background, args=(True,), daemon=True).start()
+
+    def _manual_check_updates(self):
+        self.update_btn.config(state="disabled", text="Checking...")
+        threading.Thread(target=self._check_updates_background, args=(False,), daemon=True).start()
+
+    def _check_updates_background(self, silent=True):
+        try:
+            req = urllib.request.Request(
+                GITHUB_RELEASES_URL,
+                headers={'User-Agent': 'Jiggle-Updater'}
+            )
+            with urllib.request.urlopen(req) as response:
+                data = json.loads(response.read().decode())
+                latest_tag = data.get("tag_name", "v1.0.0")
+                latest_version = latest_tag.lstrip('v')
+                
+                # Check version comparison
+                if self._is_newer_version(latest_version, APP_VERSION):
+                    # Find executable asset in releases
+                    exe_url = None
+                    for asset in data.get("assets", []):
+                        if asset.get("name") == "Jiggle.exe":
+                            exe_url = asset.get("browser_download_url")
+                            break
+                    
+                    if exe_url:
+                        self.after(0, lambda: self._prompt_update(latest_tag, exe_url))
+                    else:
+                        if not silent:
+                            self.after(0, lambda: messagebox.showinfo("Check Updates", f"A new version {latest_tag} is available, but no Jiggle.exe asset was found in the release."))
+                else:
+                    if not silent:
+                        self.after(0, lambda: messagebox.showinfo("Check Updates", "You are running the latest version of Jiggle."))
+        except Exception as e:
+            if not silent:
+                self.after(0, lambda: messagebox.showerror("Check Updates", f"Failed to check for updates:\n{e}"))
+        finally:
+            self.after(0, lambda: self.update_btn.config(state="normal", text="Check for Updates"))
+
+    def _is_newer_version(self, latest, current):
+        try:
+            lat_parts = [int(x) for x in latest.split('.')]
+            cur_parts = [int(x) for x in current.split('.')]
+            while len(lat_parts) < 3: lat_parts.append(0)
+            while len(cur_parts) < 3: cur_parts.append(0)
+            return lat_parts > cur_parts
+        except:
+            return latest != current
+
+    def _prompt_update(self, latest_tag, exe_url):
+        ans = messagebox.askyesno(
+            "Update Available",
+            f"A new version of Jiggle ({latest_tag}) is available!\n\nWould you like to download and install it now?\nThe application will restart automatically."
+        )
+        if ans:
+            self.update_btn.config(state="disabled", text="Updating...")
+            threading.Thread(target=self._download_and_install_update, args=(exe_url,), daemon=True).start()
+
+    def _download_and_install_update(self, exe_url):
+        try:
+            is_frozen = getattr(sys, 'frozen', False)
+            current_exe = sys.executable if is_frozen else sys.argv[0]
+            exe_dir = os.path.dirname(os.path.abspath(current_exe))
+            
+            temp_exe = os.path.join(exe_dir, "Jiggle_update.exe")
+            
+            # Download file
+            req = urllib.request.Request(exe_url, headers={'User-Agent': 'Jiggle-Updater'})
+            with urllib.request.urlopen(req) as response:
+                with open(temp_exe, 'wb') as f:
+                    f.write(response.read())
+            
+            if not is_frozen:
+                self.after(0, lambda: messagebox.showinfo("Update Downloaded", f"Successfully downloaded update to:\n{temp_exe}\n(Auto-installer runs only on frozen executables)."))
+                return
+            
+            # Create a detached batch script to replace the locked running executable
+            updater_bat = os.path.join(exe_dir, "Jiggle_updater.bat")
+            
+            bat_content = f"""@echo off
+title Jiggle Updater
+echo Waiting for Jiggle to exit...
+:loop
+tasklist | find /i "Jiggle.exe" > nul
+if %errorlevel% equ 0 (
+    timeout /t 1 /nobreak > nul
+    goto loop
+)
+
+echo Replacing Jiggle.exe...
+del "{current_exe}"
+ren "{temp_exe}" "Jiggle.exe"
+
+if exist "{temp_exe}" (
+    echo Error: Permission denied. Trying with administrator rights...
+    powershell -Command "Start-Process cmd -ArgumentList '/c del \\"{current_exe}\\" & ren \\"{temp_exe}\\" \\"Jiggle.exe\\" & start \\"\\" \\"{current_exe}\\"' -Verb RunAs"
+    goto end
+)
+
+echo Starting Jiggle...
+start "" "{current_exe}"
+
+:end
+del "%~f0"
+exit
+"""
+            with open(updater_bat, "w") as f:
+                f.write(bat_content)
+                
+            subprocess.Popen([updater_bat], shell=True, creationflags=subprocess.CREATE_NEW_CONSOLE)
+            self.after(0, self._quit_application)
+            
+        except Exception as e:
+            self.after(0, lambda: messagebox.showerror("Update Error", f"Failed to install update:\n{e}"))
+        finally:
+            self.after(0, lambda: self.update_btn.config(state="normal", text="Check for Updates"))
 
 # --- SINGLE INSTANCE LOGIC (SOCKET BASED) ---
 SINGLE_INSTANCE_PORT = 65432 # Port to listen on
