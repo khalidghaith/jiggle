@@ -1,0 +1,22 @@
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller build directories
+build/
+dist/
+*.spec
+
+# Inno Setup output directories
+installer_output/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
