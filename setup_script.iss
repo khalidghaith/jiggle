@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "Jiggle"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "KG"
 #define MyAppExeName "Jiggle.exe"
 #define MyConfigDir "Jiggle" ; Name of the config folder in AppData

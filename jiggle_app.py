@@ -19,7 +19,7 @@ import urllib.error
 import subprocess
 
 # --- Application Constants & Updater Configuration ---
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 GITHUB_RELEASES_URL = "https://api.github.com/repos/khalidghaith/jiggle/releases/latest"
 
 def resource_path(relative_path):

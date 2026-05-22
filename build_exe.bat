@@ -12,7 +12,7 @@ REM --icon: Sets the file icon
 REM --add-data: Adds the icon file inside the EXE
 REM --collect-all: Explicitly collects hidden dependencies for pystray and its friends.
 
-pyinstaller --noconsole --onefile --icon=icon.ico ^
+python -m PyInstaller --noconsole --onefile --icon=icon.ico ^
 --add-data "icon.ico;." ^
 --collect-all "customtkinter" ^
 --collect-all "pystray" ^
