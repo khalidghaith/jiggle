@@ -31,7 +31,7 @@ def get_config_dir():
     if not app_data:
         app_data = os.path.expanduser("~") 
         
-    config_dir = os.path.join(app_data, "JiggleMonitor")
+    config_dir = os.path.join(app_data, "Jiggle")
     
     if not os.path.exists(config_dir):
         try:
@@ -172,7 +172,7 @@ class JiggleApp(tk.Tk):
     def __init__(self):
         super().__init__()
         
-        self.title("Jiggle Monitor")
+        self.title("Jiggle 1.0.0")
         self.geometry("440x320") 
         self.resizable(False, False)
         
@@ -474,7 +474,7 @@ class JiggleApp(tk.Tk):
             pystray.MenuItem("Exit", self._quit_application)
         )
 
-        self.tray_icon = pystray.Icon("JiggleMonitor", image, "Jiggle Monitor", menu)
+        self.tray_icon = pystray.Icon("Jiggle", image, "Jiggle 1.0.0", menu)
         self.tray_icon.run()
 
     def _minimize_to_tray(self):
@@ -483,7 +483,7 @@ class JiggleApp(tk.Tk):
             if hasattr(self, 'tray_icon') and self.tray_icon:
                 self.tray_icon.notify(
                     "Still running in the background.\nDouble-click to restore.",
-                    "Jiggle Monitor"
+                    "Jiggle"
                 )
             self.has_shown_tray_message = True
         

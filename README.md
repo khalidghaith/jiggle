@@ -1,6 +1,6 @@
-# Jiggle Monitor (V4)
+# Jiggle (1.0.0)
 
-Jiggle Monitor is a lightweight, premium desktop utility built with Python (Tkinter) that monitors system inactivity and simulates human-like inputs (mouse movements, page scrolling, and keypresses) to keep your system active and prevent it from falling asleep or showing as idle.
+Jiggle is a lightweight, premium desktop utility built with Python (Tkinter) that monitors system inactivity and simulates human-like inputs (mouse movements, page scrolling, and keypresses) to keep your system active and prevent it from falling asleep or showing as idle.
 
 ---
 
@@ -18,7 +18,7 @@ Jiggle Monitor is a lightweight, premium desktop utility built with Python (Tkin
   - Interactive right-click menu with options to show the window or exit.
   - Notifications indicating when it's running in the background.
 - **Windows Startup Registry Support**: Optional integration during installation to run automatically on Windows boot.
-- **Single-Instance Enforcement**: Binds to a local port. If you try to open Jiggle Monitor while it is already running, the active window will automatically restore and flash to the front.
+- **Single-Instance Enforcement**: Binds to a local port. If you try to open Jiggle while it is already running, the active window will automatically restore and flash to the front.
 
 ---
 
@@ -39,7 +39,7 @@ Jiggle Monitor is a lightweight, premium desktop utility built with Python (Tkin
 1. Clone this repository to your local machine:
    ```bash
    git clone <your-repository-url>
-   cd Jiggle-Monitor
+   cd jiggle
    ```
 
 2. Install the required dependencies:
@@ -56,23 +56,23 @@ Jiggle Monitor is a lightweight, premium desktop utility built with Python (Tkin
 
 ## 📦 Building Standalone Executable (.exe)
 
-You can compile Jiggle Monitor into a single, standalone Windows `.exe` using PyInstaller.
+You can compile Jiggle into a single, standalone Windows `.exe` using PyInstaller.
 
 A helper batch script (`build_exe.bat`) is included in the project:
 1. Double-click **`build_exe.bat`** OR run it via terminal:
    ```cmd
    build_exe.bat
    ```
-2. Once complete, you will find a standalone `JiggleMonitor.exe` in the `dist/` directory.
+2. Once complete, you will find a standalone `Jiggle.exe` in the `dist/` directory.
 
 ---
 
 ## 💾 Creating the Installer (Inno Setup)
 
-To package Jiggle Monitor into a professional Windows Installer:
+To package Jiggle into a professional Windows Installer:
 1. Make sure you have [Inno Setup](https://jrsoftware.org/isinfo.php) installed on your PC.
 2. Compile the `setup_script.iss` script inside Inno Setup.
-3. This creates a standard `JiggleMonitor_Setup.exe` inside the `installer_output/` folder, which installs the app into `Program Files`, adds standard shortcut icons, creates a clean uninstaller that sweeps away configuration registries, and handles automatic run-at-startup preferences.
+3. This creates a standard `Jiggle_Setup.exe` inside the `installer_output/` folder, which installs the app into `Program Files`, adds standard shortcut icons, creates a clean uninstaller that sweeps away configuration registries, and handles automatic run-at-startup preferences.
 
 ---
 

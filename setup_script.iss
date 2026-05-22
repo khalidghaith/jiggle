@@ -1,11 +1,11 @@
 ; Script generated for Jiggle Monitor
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
-#define MyAppName "Jiggle Monitor"
-#define MyAppVersion "1.0"
+#define MyAppName "Jiggle"
+#define MyAppVersion "1.0.0"
 #define MyAppPublisher "KG"
-#define MyAppExeName "JiggleMonitor.exe"
-#define MyConfigDir "JiggleMonitor" ; Name of the config folder in AppData
+#define MyAppExeName "Jiggle.exe"
+#define MyConfigDir "Jiggle" ; Name of the config folder in AppData
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
@@ -23,7 +23,7 @@ PrivilegesRequired=admin
 ; NEW FIX: Forces the installer to use 64-bit mode (Program Files instead of x86)
 ArchitecturesInstallIn64BitMode=x64
 OutputDir=installer_output
-OutputBaseFilename=JiggleMonitor_Setup
+OutputBaseFilename=Jiggle_Setup
 SetupIconFile=icon.ico
 Compression=lzma
 SolidCompression=yes

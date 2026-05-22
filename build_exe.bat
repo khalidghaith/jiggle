@@ -3,7 +3,7 @@ echo Installing required libraries if missing (pystray, Pillow, pynput)...
 pip install pyinstaller pystray Pillow pynput
 
 echo.
-echo Building Jiggle Monitor with system tray support...
+echo Building Jiggle 1.0.0 with system tray support...
 echo Note: This expects 'icon.ico' to exist in this folder.
 
 REM --noconsole: Hides the black command window
@@ -17,7 +17,7 @@ pyinstaller --noconsole --onefile --icon=icon.ico ^
 --collect-all "pystray" ^
 --collect-all "Pillow" ^
 --collect-all "pynput" ^
---name="JiggleMonitor" jiggle_app.py
+--name="Jiggle" jiggle_app.py
 
 echo.
 echo Build Complete!
